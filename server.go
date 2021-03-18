@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"encoding/json"
+  "embed"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -19,6 +20,8 @@ var (
 	verifyKey     *rsa.PublicKey
 	signKey       *rsa.PrivateKey
 	configuration ServerConfig
+	//go:embed public
+	staticFiles embed.FS
 )
 
 func main() {
@@ -26,6 +29,10 @@ func main() {
 	verifyKey, signKey = readJWTKeys(configuration)
 	router := httprouter.New()
 	ratelimiter := tollbooth.NewLimiter(0.2, nil) // allow one request every 5 seconds per IP
+
+	// Frontend
+	router.GET("/", EmbeddedStaticFilesMiddleware)
+	router.GET("/static/*filepath", EmbeddedStaticFilesMiddleware)
 
 	// API
 	router.Handler("POST", "/api/login", tollbooth.LimitFuncHandler(ratelimiter, Login))
@@ -39,9 +46,6 @@ func main() {
 	router.Handler("POST", "/api/groups/remove", ValidateTokenMiddleware(GroupsRemove()))
 	router.Handler("GET", "/api/groups/list", ValidateTokenMiddleware(GroupsList()))
 
-	// Frontend
-	router.ServeFiles("/static/*filepath", http.Dir("public/static"))
-	router.Handler("GET", "/", http.FileServer(http.Dir("public")))
 
 	srv := &http.Server{
 		Addr:         ":" + configuration.ServerPort,

@@ -8,8 +8,15 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
+	"github.com/julienschmidt/httprouter"
 )
 
+func EmbeddedStaticFilesMiddleware(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+  r.URL.Path = "/public" + r.URL.Path
+  http.FileServer(http.FS(staticFiles)).ServeHTTP(w, r)
+}
+
+// API validators
 var userWithName = map[string]struct{}{"username": {}}
 var userWithNameGroup = map[string]struct{}{"username": {}, "group": {}}
 var userWithNamePassword = map[string]struct{}{"username": {}, "password": {}}
